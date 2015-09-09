@@ -1,0 +1,139 @@
+# Expert mode, for advanced DevOps engineers
+# Can customize almost everything
+aws:
+  regions:
+    - name: us-east-1
+      vpc:
+        - name: use1
+          cidr_block: 10.0.0.0/16
+
+          instance_tenancy: default # Optional default|dedicated
+          enable_dns_support: true            # Optional
+          enable_dns_hostnames: false         # Optional
+
+          tags: # Optional
+            name: vpc_use1
+
+          internet_gateways:
+            - name: use1_igw
+              tags: # Optional
+                x: y
+
+          subnets:
+            - name: use1_subnet_public1
+              cidr_block: 10.0.0.0/24
+              availability_zone: us-east-1c # Optional (Default: AWS selects a zone for you)
+              auto_assign_public_ip: true
+              tags: # Optional
+                x: y
+
+            - name: use1_subnet_web1
+              cidr_block: 10.0.1.0/24
+              availability_zone: us-east-1e # Optional (Default: AWS selects a zone for you)
+              auto_assign_public_ip: false
+              tags: # Optional
+                x: y
+
+          route_tables:
+            - name: use1_rt_public1
+              subnets:
+                - ${aws_subnet.use1_subnet_public1.id}
+              routes:
+                - cidr_block: 10.3.0.0/24       # Source
+                  gateway_id: ${aws_igw.use1_igw.id}  # Destination
+              tags: # Optional
+                x: y
+
+            - name: use1_rt_nat1
+              subnets:
+                - ${aws_subnet.use1_subnet_web1.id}
+              routes:
+                - cidr_block: 10.3.0.0/24
+                  gateway_id: ${aws_igw.use1_igw.id}  # Destination
+                  # instance_id:
+      ec2:
+        placement_groups:
+          - name: use1_pg_mysqlcluster
+            strategy: cluster # Optional
+
+        security_groups:
+          - name: use1_sg_super
+            description: Super security group that accepts all traffic
+
+            vpc: ${aws_vpc.use1.id} # Optional
+
+            tags: # Optional
+              x: y
+
+            ingress:
+              - from_port: 0
+                to_port: 65535
+                protocol: tcp # -1|tcp|udp|icmp
+                cidr_blocks:      # Optional if security_groups exists
+                  - 10.0.1.0/24
+                security_groups:  # Optional if cidr_blocks exists
+                  - ${aws_sg.use1_sg_web.id}
+
+          - name: use1_sg_web
+            description: Web server security group
+
+            vpc: ${aws_vpc.use1.id} # Optional
+
+            tags: # Optional
+              x: y
+
+            ingress:
+              - from_port: 80
+                to_port: 80
+                protocol: tcp
+                cidr_blocks:
+                  - 10.0.0.0/24
+
+        elbs:
+          - name: use1_elb_platform  # Need to convert _ to -
+            cross_zone: true # Optional
+
+            # If in VPC
+            subnets:        # Required if in VPC
+              - ${aws_subnet.use1_subnet_web1.id}
+            internal: true  # Optional
+
+            # If not in VPC (EC2 Classic)
+            availability_zones: # Required if in EC2 Classic
+          #    - us-east-1a
+          #    - us-east-1b
+
+            listeners:
+              - port: 80
+                protocol: http
+                instance_port: 80
+                instance_protocol: http
+
+          #    - port: 443
+          #      protocol: https
+          #      instance_port: 443
+          #      instance_protocol: http
+          #      ssl_certificate_id: arn:aws:iam::123456789012:server-certificate/certName
+
+            security_groups: # Optional
+              - ${sg.use1_sg_web.id}
+
+            instances: # Optional
+
+            health_check:
+              healthy_threshold: 2
+              unhealthy_threshold: 2
+              timeout: 3
+              target: HTTP:8000/
+              interval: 30
+
+        launch_configurations:
+          # Remarks: auto add ephemeral volumes
+          - name: use1_lc_web_platform
+
+            # image_id: ami-1ecae776 # Always use Amazon Linux
+            # iam_role: auto-created
+            # key_name: mykey # Optional, use default key if ommited
+
+            instance_type: t2.small
+            # security_groups:  # Optional. if ommited, AWS will assign the 
