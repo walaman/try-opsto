@@ -1,0 +1,6 @@
+- name: use1_subnet_public5
+  cidr_block: 10.0.0.0/24
+  availability_zone: us-east-1c # Optional (Default: AWS selects a zone for you)
+  auto_assign_public_ip: true
+  tags: # Optional
+    x: y
