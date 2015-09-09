@@ -35,6 +35,7 @@ aws:
                 x: y
 
           route_tables:
+            - include: abc.yml
             - name: use1_rt_public1
               subnets:
                 - ${aws_subnet.use1_subnet_public1.id}
